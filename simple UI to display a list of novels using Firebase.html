@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Novels List - Firebase RTDB</title>
+<style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+    input, select {
+      margin: 5px 10px 15px 0;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+<h2>Novels List</h2>
+
+<input type="text" id="search" placeholder="Search by Title or Author" />
+<select id="filterYear">
+  <option value="">All Years</option>
+</select>
+<select id="sortPrice">
+  <option value="">Sort by Price</option>
+  <option value="asc">Low to High</option>
+  <option value="desc">High to Low</option>
+</select>
+
+<table>
+  <thead>
+    <tr>
+      <th>Title</th><th>Author</th><th>Price</th><th>Release Year</th><th>Genre</th>
+    </tr>
+  </thead>
+  <tbody id="novelsTableBody">
+  </tbody>
+</table>
+
+<script>
+  const url = "https://novels-9005f-default-rtdb.firebaseio.com/.json";
+  let novels = [];
+
+  // Fetch novels data from Firebase 
+  function fetchNovels() {
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        novels = data || [];
+        populateFilterYear();
+        renderNovels(novels);
+      })
+      .catch(err => {
+        console.error('Error fetching data:', err);
+        document.getElementById('novelsTableBody').innerHTML = '<tr><td colspan="5">Failed to load novels.</td></tr>';
+      });
+  }
+
+  // Render novels in table
+  function renderNovels(list) {
+    const tbody = document.getElementById('novelsTableBody');
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5">No novels found.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map(novel => `
+      <tr>
+        <td>${novel.title}</td>
+        <td>${novel.author}</td>
+        <td>$${novel.price.toFixed(2)}</td>
+        <td>${novel.release_year}</td>
+        <td>${novel.genre}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Populate filter years dynamically
+  function populateFilterYear() {
+    const years = [...new Set(novels.map(n => n.release_year))].sort((a,b) => a-b);
+    const filterYear = document.getElementById('filterYear');
+    years.forEach(year => {
+      const option = document.createElement('option');
+      option.value = year;
+      option.textContent = year;
+      filterYear.appendChild(option);
+    });
+  }
+
+  // Filter, Search, Sort logic
+  function filterAndRender() {
+    const searchText = document.getElementById('search').value.toLowerCase();
+    const filterYear = document.getElementById('filterYear').value;
+    const sortPrice = document.getElementById('sortPrice').value;
+
+    let filtered = novels;
+
+    // Search by title or author
+    if (searchText) {
+      filtered = filtered.filter(n =>
+        n.title.toLowerCase().includes(searchText) || n.author.toLowerCase().includes(searchText)
+      );
+    }
+
+    // Filter by year
+    if (filterYear) {
+      filtered = filtered.filter(n => n.release_year == filterYear);
+    }
+
+    // Sort by price
+    if (sortPrice === 'asc') {
+      filtered.sort((a,b) => a.price - b.price);
+    } else if (sortPrice === 'desc') {
+      filtered.sort((a,b) => b.price - a.price);
+    }
+
+    renderNovels(filtered);
+  }
+
+  // Event listeners
+  document.getElementById('search').addEventListener('input', filterAndRender);
+  document.getElementById('filterYear').addEventListener('change', filterAndRender);
+  document.getElementById('sortPrice').addEventListener('change', filterAndRender);
+
+  // Initial call
+  fetchNovels();
+
+</script>
+</body>
+</html>
